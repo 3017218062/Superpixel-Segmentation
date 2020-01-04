@@ -138,6 +138,12 @@ In the 3x3 domain of every center:
 
 Because of the characteristics of clustering process, it is not guaranteed that every class can be continuous in XY space.
 
+First, BFS is used to find out each connected block.
+
+The time complexity is O(mn), where n and m are the length and width of the image respectively.
+
+Then, the small connected blocks are merged by using parallel search set when the size of the block is less than the preset threshold.
+
 - Count all connected graphs.
 
 - Initialize the threshold.
@@ -156,4 +162,10 @@ Further, if left or above is marked, we can skip this point.
 ## Result
 <a id="1.4"/>
 
-![](../result/lena_SLIC.png)
+Super pixels:
+
+![](../result/lena_SLIC_pixel.png)
+
+Splitted image:
+
+![](../result/lena_SLIC_image.png)

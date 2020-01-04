@@ -1,5 +1,4 @@
 from tool.imageTool import *
-from collections import Counter
 import math
 
 
@@ -45,6 +44,7 @@ class SLIC():
         self.clusters = []
         self.clusterNumber = 0
         self.iterNumber = iterNumber
+        self.connectNumber = 0
         self.boundary = color.rgb2lab(np.zeros(self.image.shape))
 
     def run(self):
@@ -53,8 +53,7 @@ class SLIC():
         for i in range(self.iterNumber):
             self.__labelChoose()
             self.__clusterUpdate()
-        self.__connect()
-        self.__enforceConnect2()
+        self.__enforceConnect()
         self.__imageSplit()
 
     def __clusterInit(self):
@@ -151,58 +150,30 @@ class SLIC():
 
     def __enforceConnect(self):
         """
-        - Count the label.
-        - Initialize the threshold.
-        - Merge small block into right block.
+        - connect(): Get the connected graphs.
+        - find(): Component identifier for x.
+        - union(): Add connection between i and j.
         """
-        labels = Counter(self.label.reshape(-1))
-        threshold = (self.superPixelLength ** 2) / 4
-        while True:
-            stop = 1
+        def connect():
+            label = self.label
+            visit = np.zeros((self.height, self.width), dtype=np.int32)
+            dx, dy = [-1, 1, 0, 0], [0, 0, 1, -1]
+
             for i in range(self.height):
                 for j in range(self.width):
-                    if labels[self.label[i][j]] < threshold and j + 1 < self.width:
-                        self.label[i][j] += 1
-                        stop = 0
-            if stop: break
-
-    def __connect(self):
-        label = self.label.copy()
-        height, width = self.height, self.width
-
-        cnt = 0
-        vis = np.zeros(label.shape, dtype=np.int32)
-        dx = [-1, 1, 0, 0]
-        dy = [0, 0, 1, -1]
-
-        for i in range(height):
-            for j in range(width):
-                if not vis[i][j]:
-                    cnt += 1
-                    Q = [(i, j)]
-                    vis[i][j]=cnt
-                    while len(Q):
-                        x, y = Q.pop(0)
-                        for k in range(4):
-                            xx = x + dx[k]
-                            yy = y + dy[k]
-                            if 0 <= xx and xx < width and 0 <= yy and yy < height  and not vis[xx][yy] and label[xx][yy]==label[i][j]:
-                                vis[xx][yy]=cnt
-                                Q.append((xx, yy))
-        self.maxCount=cnt
-        self.label2 = vis
-
-    def __enforceConnect2(self):
-        N = self.maxCount
-        label = self.label2
-        threshold = self.superPixelLength ** 2 / 2
-
-        count = np.zeros(N+1, dtype=np.int32)
-        height, width = self.height, self.width
-        for i in range(height):
-            for j in range(width):
-                count[label[i][j]] += 1
-        p = np.arange(N+1)
+                    if not visit[i][j]:
+                        self.connectNumber += 1
+                        Q = [(i, j)]
+                        visit[i][j] = self.connectNumber
+                        while len(Q):
+                            x, y = Q.pop(0)
+                            for k in range(4):
+                                xx, yy = x + dx[k], y + dy[k]
+                                if 0 <= xx < self.width and 0 <= yy < self.height and \
+                                        not visit[xx][yy] and label[xx][yy] == label[i][j]:
+                                    visit[xx][yy] = self.connectNumber
+                                    Q.append((xx, yy))
+            return visit
 
         def find(x):
             if p[x] == x:
@@ -216,30 +187,36 @@ class SLIC():
             y = find(j)
             if x != y:
                 p[x] = y
-                count[x] += count[y]
+                blockCount[x] += blockCount[y]
 
-        for i in range(height - 1):
-            for j in range(width - 1):
-                x = find(label[i][j])
-                if count[x] < threshold:
-                    y = find(label[i][j + 1])
-                    z = find(label[i + 1][j])
+        blockLabel = connect()
+        threshold = self.superPixelLength ** 2 / 4
+        blockColor = np.zeros(self.connectNumber + 1, dtype=np.int32)
+        blockCount = np.zeros(self.connectNumber + 1, dtype=np.int32)
+        p = np.arange(self.connectNumber + 1)
+
+        for i in range(self.height):
+            for j in range(self.width):
+                blockCount[blockLabel[i][j]] += 1
+                if not blockColor[blockLabel[i][j]]:
+                    blockColor[blockLabel[i][j]] = self.label[i][j]
+
+        for i in range(self.height - 1):
+            for j in range(self.width - 1):
+                x = find(blockLabel[i][j])
+                if blockCount[x] < threshold:
+                    y = find(blockLabel[i][j + 1])
+                    z = find(blockLabel[i + 1][j])
                     if x != y:
                         union(x, y)
                     elif x != z:
                         union(x, z)
-        for i in range(height):
-            for j in range(width):
-                label[i][j] = find(label[i][j])
-        self.label2 = label
 
-        color=np.zeros(N+1)
-        for i in range(height):
-            for j in range(width):
-                color[label[i][j]]=self.label[i][j]
-        for i in range(height):
-            for j in range(width):
-                self.label[i][j]=color[label[i][j]]
+        for i in range(self.height):
+            for j in range(self.width):
+                f = find(blockLabel[i][j])
+                blockLabel[i][j] = f
+                self.label[i][j] = blockColor[f]
 
     def __imageSplit(self):
         """
@@ -249,7 +226,7 @@ class SLIC():
             - Determine whether there is a divided boundary around to refine the boundary.
         - Draw all super pixel blocks.
         """
-        print("Spliting...")
+        print("Splitting...")
         for i in range(self.height):
             up = i - 1 if i - 1 > -1 else i
             down = i + 1 if i + 1 < self.height else i
@@ -257,12 +234,6 @@ class SLIC():
                 left = j - 1 if j - 1 > -1 else j
                 right = j + 1 if j + 1 < self.width else j
                 k = self.label[i][j]
-                # if not (k == self.label[i][left] == self.label[i][right] == self.label[up][j] == self.label[down][j]):
-                #     self.image[i][j] = np.asarray([100, 0, 0])
-                #     continue
-                # if not k == self.label[i][right] == self.label[down][j]:
-                #     self.image[i][j] = np.asarray([100, 0, 0])
-                #     continue
                 if (k != self.label[i][right] and self.image[i][left][0] != 100) or (
                         k != self.label[down][j] and self.image[up][j][0] != 100):
                     self.image[i][j] = np.asarray([100, 0, 0])
@@ -281,7 +252,7 @@ class SLIC():
 
 if __name__ == "__main__":
     image = imageLoad()
-    slic = SLIC(image, k=100, iterNumber=5)
+    slic = SLIC(image, k=900, iterNumber=5)
     slic.run()
-    slic.imageSave("../result/cloth_SLIC.png")
+    slic.imageSave("../result/lena_SLIC_pixel.png")
     # slic.boundarySave("../result/cloth_SLIC_boundary.png")
