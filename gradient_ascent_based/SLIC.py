@@ -167,11 +167,11 @@ class SLIC():
             if stop: break
 
     def __connect(self):
-        label = self.label
+        label = self.label.copy()
         height, width = self.height, self.width
 
         cnt = 0
-        vis = np.zeros(label.shape)
+        vis = np.zeros(label.shape, dtype=np.int32)
         dx = [-1, 1, 0, 0]
         dy = [0, 0, 1, -1]
 
@@ -180,28 +180,29 @@ class SLIC():
                 if not vis[i][j]:
                     cnt += 1
                     Q = [(i, j)]
+                    vis[i][j]=cnt
                     while len(Q):
                         x, y = Q.pop(0)
-                        vis[x][y] = cnt
                         for k in range(4):
                             xx = x + dx[k]
                             yy = y + dy[k]
-                            if 0 <= xx and xx < width and 0 <= yy and yy < height  and vis[xx][yy] != cnt:
-                                vis[xx][yy] = cnt
+                            if 0 <= xx and xx < width and 0 <= yy and yy < height  and not vis[xx][yy] and label[xx][yy]==label[i][j]:
+                                vis[xx][yy]=cnt
                                 Q.append((xx, yy))
-        self.label = vis
+        self.maxCount=cnt
+        self.label2 = vis
 
     def __enforceConnect2(self):
-        N = self.clusterNumber + 1
-        label = self.label
-        threshold = self.superPixelLength ** 2 / 4
+        N = self.maxCount
+        label = self.label2
+        threshold = self.superPixelLength ** 2 / 2
 
-        count = np.zeros(N)
+        count = np.zeros(N+1, dtype=np.int32)
         height, width = self.height, self.width
         for i in range(height):
             for j in range(width):
                 count[label[i][j]] += 1
-        p = np.arange(N)
+        p = np.arange(N+1)
 
         def find(x):
             if p[x] == x:
@@ -216,7 +217,6 @@ class SLIC():
             if x != y:
                 p[x] = y
                 count[x] += count[y]
-                print(x,y)
 
         for i in range(height - 1):
             for j in range(width - 1):
@@ -231,7 +231,15 @@ class SLIC():
         for i in range(height):
             for j in range(width):
                 label[i][j] = find(label[i][j])
-        self.label = label
+        self.label2 = label
+
+        color=np.zeros(N+1)
+        for i in range(height):
+            for j in range(width):
+                color[label[i][j]]=self.label[i][j]
+        for i in range(height):
+            for j in range(width):
+                self.label[i][j]=color[label[i][j]]
 
     def __imageSplit(self):
         """
@@ -273,7 +281,7 @@ class SLIC():
 
 if __name__ == "__main__":
     image = imageLoad()
-    slic = SLIC(image, k=400, iterNumber=5)
+    slic = SLIC(image, k=100, iterNumber=5)
     slic.run()
     slic.imageSave("../result/cloth_SLIC.png")
     # slic.boundarySave("../result/cloth_SLIC_boundary.png")

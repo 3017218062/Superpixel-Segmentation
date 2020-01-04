@@ -138,20 +138,20 @@ In the 3x3 domain of every center:
 
 Because of the characteristics of clustering process, it is not guaranteed that every class can be continuous in XY space.
 
-
-
-Thus 
-
-- Count the Label array.
+- Count all connected graphs.
 
 - Initialize the threshold.
 
-- Merge small block into right block.
+- Merge small block into nearby block.
 
 ### Draw the boundary
 <a id="1.3.3"/>
 
-Obviously, 
+Obviously, the points with different labels in four directions are the boundary points.
+
+Because of traversal method of array, we just need to look at the points on the right and below.
+
+Further, if left or above is marked, we can skip this point.
 
 ## Result
 <a id="1.4"/>
