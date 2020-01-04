@@ -45,6 +45,7 @@ class SLIC():
         self.clusters = []
         self.clusterNumber = 0
         self.iterNumber = iterNumber
+        self.boundary = color.rgb2lab(np.zeros(self.image.shape))
 
     def run(self):
         self.__clusterInit()
@@ -52,7 +53,8 @@ class SLIC():
         for i in range(self.iterNumber):
             self.__labelChoose()
             self.__clusterUpdate()
-        self.__enforceConnect()
+        self.__connect()
+        self.__enforceConnect2()
         self.__imageSplit()
 
     def __clusterInit(self):
@@ -78,8 +80,9 @@ class SLIC():
         def gradientCalculate(self, x, y):
             gradient = 0
             for i in range(3):
-                gradient = self.image[x][y + 1][i] - self.image[x][y - 1][i] + self.image[x + 1][y][i] - \
-                           self.image[x - 1][y][i]
+                gradient += math.fabs(self.image[x][y + 1][i] - self.image[x][y - 1][i]) + math.fabs(
+                    self.image[x + 1][y][i] - self.image[x - 1][y][i])
+
             return gradient / 2
 
         print("Moving...")
@@ -163,6 +166,73 @@ class SLIC():
                         stop = 0
             if stop: break
 
+    def __connect(self):
+        label = self.label
+        height, width = self.height, self.width
+
+        cnt = 0
+        vis = np.zeros(label.shape)
+        dx = [-1, 1, 0, 0]
+        dy = [0, 0, 1, -1]
+
+        for i in range(height):
+            for j in range(width):
+                if not vis[i][j]:
+                    cnt += 1
+                    Q = [(i, j)]
+                    while len(Q):
+                        x, y = Q.pop(0)
+                        vis[x][y] = cnt
+                        for k in range(4):
+                            xx = x + dx[k]
+                            yy = y + dy[k]
+                            if 0 <= xx and xx < width and 0 <= yy and yy < height  and vis[xx][yy] != cnt:
+                                vis[xx][yy] = cnt
+                                Q.append((xx, yy))
+        self.label = vis
+
+    def __enforceConnect2(self):
+        N = self.clusterNumber + 1
+        label = self.label
+        threshold = self.superPixelLength ** 2 / 4
+
+        count = np.zeros(N)
+        height, width = self.height, self.width
+        for i in range(height):
+            for j in range(width):
+                count[label[i][j]] += 1
+        p = np.arange(N)
+
+        def find(x):
+            if p[x] == x:
+                return x
+            else:
+                p[x] = find(p[x])
+                return p[x]
+
+        def union(i, j):
+            x = find(i)
+            y = find(j)
+            if x != y:
+                p[x] = y
+                count[x] += count[y]
+                print(x,y)
+
+        for i in range(height - 1):
+            for j in range(width - 1):
+                x = find(label[i][j])
+                if count[x] < threshold:
+                    y = find(label[i][j + 1])
+                    z = find(label[i + 1][j])
+                    if x != y:
+                        union(x, y)
+                    elif x != z:
+                        union(x, z)
+        for i in range(height):
+            for j in range(width):
+                label[i][j] = find(label[i][j])
+        self.label = label
+
     def __imageSplit(self):
         """
         - Draw the boundary of super pixels.
@@ -185,10 +255,10 @@ class SLIC():
                 # if not k == self.label[i][right] == self.label[down][j]:
                 #     self.image[i][j] = np.asarray([100, 0, 0])
                 #     continue
-                # if (k != self.label[i][right] and k == self.image[i][left][0] != 100) or (
-                #         k != self.label[down][j] and self.image[up][j][0] != 100):
-                #     self.image[i][j] = np.asarray([100, 0, 0])
-                #     continue
+                if (k != self.label[i][right] and self.image[i][left][0] != 100) or (
+                        k != self.label[down][j] and self.image[up][j][0] != 100):
+                    self.image[i][j] = np.asarray([100, 0, 0])
+                    continue
                 cluster = self.clusters[k - 1]
                 self.image[i][j] = np.asarray([cluster.l, cluster.a, cluster.b])
 
@@ -196,9 +266,14 @@ class SLIC():
         newImage = (color.lab2rgb(self.image) * 255).astype(np.uint8)
         io.imsave(filename, newImage)
 
+    def boundarySave(self, filename):
+        newImage = (color.lab2rgb(self.boundary) * 255).astype(np.uint8)
+        io.imsave(filename, newImage)
+
 
 if __name__ == "__main__":
     image = imageLoad()
-    slic = SLIC(image, k=900, iterNumber=5)
+    slic = SLIC(image, k=400, iterNumber=5)
     slic.run()
-    slic.imageSave("../result/lena_SLIC.png")
+    slic.imageSave("../result/cloth_SLIC.png")
+    # slic.boundarySave("../result/cloth_SLIC_boundary.png")

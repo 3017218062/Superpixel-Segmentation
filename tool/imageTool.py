@@ -1,9 +1,9 @@
 import numpy as np
-from skimage import io, color, util
+from skimage import io, color, util, morphology
 
 
 def imageLoad():
-    image = io.imread(r"../image/lena.png")
+    image = io.imread(r"../image/cloth.jpg")
     image = color.rgb2lab(image)
     return image
 
