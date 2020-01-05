@@ -67,13 +67,12 @@
 ## Optimization
 
 ### Choose the gradient
-<a id="1.3.1"/>
 
-It can avoid locating the super pixel on the edge and reduce the chance of replacing the super pixel with noise.
+它可以避免在边缘定位超像素，并且减少用噪声代替超像素的机会。
 
-In the 3x3 domain of every center:
+在每个点的3x3的区域中：
 
-- Calculate gradient of 8 neighbors.
+- 分别计算附近8个点的梯度。
 
     ![](../resource/gradient_ascent_based/SLIC/dx.gif)
     
@@ -81,41 +80,38 @@ In the 3x3 domain of every center:
     
     ![](../resource/gradient_ascent_based/SLIC/g.gif)
 
-- Choose the point with the smallest gradient as the center node of the new center.
+- 选择梯度最小的点为新的聚类中心。
 
 ### Merge all small blocks
-<a id="1.3.2"/>
 
-Because of the characteristics of clustering process, it is not guaranteed that every class can be continuous in XY space.
+由于聚类过程的特点，并不能保证每个类在XY空间都是连续的。
 
-First, BFS is used to find out each connected block.
+首先，使用BFS找出每个连接的块。
 
-The time complexity is O(mn), where n and m are the length and width of the image respectively.
+时间复杂度为O(mn)，其中n和m分别为图像的长度和宽度。
 
-Then, the small connected blocks are merged by using parallel search set when the size of the block is less than the preset threshold.
+然后，当块的大小小于预设阈值时，使用并行搜索集合并连接小块。
 
-- Count all connected graphs.
+- 计算所有连通图。
 
-- Initialize the threshold.
+- 初始化阈值。
 
-- Merge small block into nearby block.
+- 将小块合并到附近的块中。
 
 ### Draw the boundary
-<a id="1.3.3"/>
 
-Obviously, the points with different labels in four directions are the boundary points.
+显然，在四个方向上具有不同标签的点是边界点。
 
-Because of traversal method of array, we just need to look at the points on the right and below.
+由于数组的遍历方法，我们只需要查看右方或下方的点。
 
-Further, if left or above is marked, we can skip this point.
+此外，如果左边或上面有标记，我们可以跳过这个点。
 
 ## Result
-<a id="1.4"/>
 
-Super pixels:
+分割后的超像素:
 
 ![](../result/lena_SLIC_pixel.png)
 
-Splitted image:
+分割后的图片:
 
 ![](../result/lena_SLIC_image.png)
