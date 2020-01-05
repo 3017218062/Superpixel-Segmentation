@@ -54,19 +54,17 @@
 
 ### Why we change rgb to lab?
 
-- It is not only a device independent color model, but also a color model based on physiological characteristics. LAB color model consists of three elements, one is brightness (L), and A and B are two color channels. A includes colors from dark green (low brightness value) to gray (medium brightness value) to bright pink (high brightness value); B is from bright blue (low brightness value) to gray (medium brightness value) to yellow (high brightness value). Therefore, this kind of color will produce bright colors after mixing, and lab mode defines the most colors.
+- 它不仅是一种与设备无关的颜色模型，而且是一种基于生理特性的颜色模型。LAB颜色模型由三个元素组成，一个是亮度（L），A和B是两个颜色通道。A包括从深绿色（低亮度值）到灰色（中等亮度值）到亮粉色（高亮度值）的颜色；B是从亮蓝色（低亮度值）到灰色（中等亮度值）到黄色（高亮度值）。因此，这种颜色在混合后会产生鲜艳的颜色，LAB模式定义了最多的颜色。
 
-- The segmentation effect of LAB space is much better than that of RGB space.
+- LAB模式的分割效果优于RGB模式下的分割效果。
 
 ### Why we choose the 2Sx2S region?
-<a id="1.2.2"/>
 
-- Reduce super pixel search area.
+- 缩小了超像素的搜索区域。
 
-- The complexity of SLIC is independent of the number of super pixels.
+- 使SLIC的复杂度无关与超像素的数量。
 
 ## Optimization
-<a id="1.3"/>
 
 ### Choose the gradient
 <a id="1.3.1"/>
